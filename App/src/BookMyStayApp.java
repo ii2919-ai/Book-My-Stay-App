@@ -1,89 +1,64 @@
 import java.util.*;
 
-// Domain मॉडल: Room
-class Room {
-    private String type;
-    private double price;
-    private List<String> amenities;
+// Reservation: Represents booking intent
+class Reservation {
+    private String guestName;
+    private String roomType;
 
-    public Room(String type, double price, List<String> amenities) {
-        this.type = type;
-        this.price = price;
-        this.amenities = amenities;
+    public Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    public String getType() {
-        return type;
+    public String getGuestName() {
+        return guestName;
     }
 
-    public double getPrice() {
-        return price;
+    public String getRoomType() {
+        return roomType;
     }
 
-    public List<String> getAmenities() {
-        return amenities;
-    }
-
-    public void displayDetails() {
-        System.out.println("Room Type: " + type);
-        System.out.println("Price: ₹" + price);
-        System.out.println("Amenities: " + amenities);
-        System.out.println("---------------------------");
+    public void display() {
+        System.out.println("Guest: " + guestName + " | Requested Room: " + roomType);
     }
 }
 
-// Inventory: State Holder (READ-ONLY access for search)
-class Inventory {
-    private Map<String, Integer> availabilityMap = new HashMap<>();
+// Booking Request Queue (FIFO)
+class BookingRequestQueue {
+    private Queue<Reservation> queue;
 
-    public void addRoom(String type, int count) {
-        availabilityMap.put(type, count);
+    public BookingRequestQueue() {
+        queue = new LinkedList<>();
     }
 
-    public int getAvailability(String type) {
-        return availabilityMap.getOrDefault(type, 0);
+    // Add booking request
+    public void addRequest(Reservation reservation) {
+        queue.offer(reservation);
+        System.out.println("Booking request added for " + reservation.getGuestName());
     }
 
-    public Map<String, Integer> getAllAvailability() {
-        // Defensive copy to prevent modification
-        return new HashMap<>(availabilityMap);
-    }
-}
-
-// Search Service: Handles read-only logic
-class SearchService {
-    private Inventory inventory;
-    private Map<String, Room> roomCatalog;
-
-    public SearchService(Inventory inventory, Map<String, Room> roomCatalog) {
-        this.inventory = inventory;
-        this.roomCatalog = roomCatalog;
-    }
-
-    public void searchAvailableRooms() {
-        System.out.println("\nAvailable Rooms:\n");
-
-        Map<String, Integer> availabilityData = inventory.getAllAvailability();
-
-        boolean found = false;
-
-        for (String roomType : availabilityData.keySet()) {
-            int count = availabilityData.get(roomType);
-
-            // Validation: Only show available rooms
-            if (count > 0 && roomCatalog.containsKey(roomType)) {
-                Room room = roomCatalog.get(roomType);
-
-                room.displayDetails();
-                System.out.println("Available Units: " + count);
-                System.out.println("===========================");
-                found = true;
-            }
+    // View all requests (READ-ONLY)
+    public void displayQueue() {
+        if (queue.isEmpty()) {
+            System.out.println("No booking requests in queue.");
+            return;
         }
 
-        if (!found) {
-            System.out.println("No rooms available at the moment.");
+        System.out.println("\nBooking Requests (FIFO Order):\n");
+
+        for (Reservation r : queue) {
+            r.display();
         }
+    }
+
+    // Peek next request (without removing)
+    public Reservation peekNext() {
+        return queue.peek();
+    }
+
+    // Get queue size
+    public int getSize() {
+        return queue.size();
     }
 }
 
@@ -91,31 +66,34 @@ class SearchService {
 public class BookMyStayApp {
     public static void main(String[] args) {
 
-        // Step 1: Create Room Catalog (Domain Layer)
-        Map<String, Room> roomCatalog = new HashMap<>();
+        // Step 1: Create Booking Queue
+        BookingRequestQueue bookingQueue = new BookingRequestQueue();
 
-        roomCatalog.put("Single",
-                new Room("Single", 2000,
-                        Arrays.asList("WiFi", "TV")));
+        // Step 2: Guests submit booking requests
+        Reservation r1 = new Reservation("Arun", "Single");
+        Reservation r2 = new Reservation("Priya", "Suite");
+        Reservation r3 = new Reservation("Karan", "Double");
 
-        roomCatalog.put("Double",
-                new Room("Double", 3500,
-                        Arrays.asList("WiFi", "TV", "AC")));
+        bookingQueue.addRequest(r1);
+        bookingQueue.addRequest(r2);
+        bookingQueue.addRequest(r3);
 
-        roomCatalog.put("Suite",
-                new Room("Suite", 6000,
-                        Arrays.asList("WiFi", "TV", "AC", "Mini Bar")));
+        // Step 3: Display queue (preserves arrival order)
+        bookingQueue.displayQueue();
 
-        // Step 2: Setup Inventory (State Holder)
-        Inventory inventory = new Inventory();
-        inventory.addRoom("Single", 3);
-        inventory.addRoom("Double", 0);  // Should NOT appear
-        inventory.addRoom("Suite", 2);
+        // Step 4: Show next request (without processing)
+        System.out.println("\nNext request to be processed:");
+        Reservation next = bookingQueue.peekNext();
 
-        // Step 3: Create Search Service
-        SearchService searchService = new SearchService(inventory, roomCatalog);
+        if (next != null) {
+            next.display();
+        }
 
-        // Step 4: Guest initiates search (READ-ONLY)
-        searchService.searchAvailableRooms();
+        // Step 5: Show total requests
+        System.out.println("\nTotal Requests in Queue: " + bookingQueue.getSize());
+
+        // IMPORTANT:
+        // No inventory updates or booking allocation happens here.
+        // This stage ONLY collects and orders requests.
     }
 }
